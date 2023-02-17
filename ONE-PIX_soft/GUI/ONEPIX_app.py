@@ -7,8 +7,8 @@ from tkinter.messagebox import showwarning
 
 from functools import partial
 import PIL.Image, PIL.ImageTk
-
 import matplotlib.patches as patches
+import matplotlib.cm as CM
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
 from matplotlib import rcParams, ticker
@@ -389,6 +389,7 @@ class OPApp(ctk.CTk):
         self.save_path = None
         self.id_SaveFormat = None
         self.bands_SaveFormat = None
+        self.save_comment = ctk.StringVar()
         self.chkSave_id = ctk.IntVar()
         self.chkSave_id.set(1)
         self.chkSave_bands = ctk.IntVar()
@@ -1123,12 +1124,12 @@ class OPApp(ctk.CTk):
         
         self.chkSave_id.set(1)
         self.save_id_CB = ctk.CTkCheckBox(self.d, text = "Save indices", variable = self.chkSave_id)
-        self.save_id_CB.grid(column=0, row=0, padx=10, pady=10, rowspan =1, columnspan=1,
+        self.save_id_CB.grid(column=0, row=0, padx=10, pady=2.5, rowspan =1, columnspan=1,
                                 sticky = "w")
         
         self.chkSave_bands.set(0)
         self.save_bands_CB = ctk.CTkCheckBox(self.d, text = "Save bands", variable = self.chkSave_bands)
-        self.save_bands_CB.grid(column=1, row=0, padx=10, pady=10, rowspan =1, columnspan=1,
+        self.save_bands_CB.grid(column=2, row=0, padx=10, pady=2.5, rowspan =1, columnspan=1,
                                 sticky = "w")
     
         
@@ -1136,39 +1137,52 @@ class OPApp(ctk.CTk):
                                     values = ["np array", "TIFF", "PNG"],
                                     state = "readonly")
         self.id_format.set("np array") #index de l'élément sélectionné
-        self.id_format.grid(column=0, row=1, padx=10, pady=10, rowspan =1, columnspan=1,
+        self.id_format.grid(column=0, row=1, padx=10, pady=2.5, rowspan =1, columnspan=1,
                                 sticky = "w")
         
         self.bands_format = ctk.CTkComboBox(self.d, variable = ("b_np", "b_tif", "b_png"),
                                     values = ["np array", "TIFF", "PNG"],
                                     state = "readonly")
         self.bands_format.set("np array") #index de l'élément sélectionné
-        self.bands_format.grid(column=1, row=1, padx=10, pady=10, rowspan =1, columnspan=1,
+        self.bands_format.grid(column=2, row=1, padx=10, pady=2.5, rowspan =1, columnspan=1,
                                 sticky = "w")
         
         
         self.save_desc = ctk.CTkLabel(self.d, text = "Save directory :")
-        self.save_desc.grid(column=0, row=2, padx=10, pady=10, rowspan =1, columnspan=1,
+        self.save_desc.grid(column=0, row=2, padx=10, pady=(10,2.5), rowspan =1, columnspan=1,
                             sticky="w")
         
         self.shown_save_path = ctk.StringVar()
         self.shown_save_path.set("Select a path")
         self.save_path_label = ctk.CTkEntry(self.d, textvariable = self.shown_save_path,
                                            state = 'readonly',width=300,text_color='red')
-        self.save_path_label.grid(column=0, row=3, padx=10, pady=10, rowspan =1, columnspan=1)
+        self.save_path_label.grid(column=0, row=3, padx=10, pady=(2.5,10), rowspan =1, columnspan=2)
     
         self.explore_bouton = ctk.CTkButton(self.d, text = "Parcourir", 
                                  command = lambda : self.get_dir())
-        self.explore_bouton.grid(column=1, row=3, padx=10, pady=10, rowspan =1, columnspan=1)
+        self.explore_bouton.grid(column=2, row=3, padx=10, pady=(2.5,10), rowspan =1, columnspan=1)
+        
+        self.comment_label = ctk.CTkLabel(self.d, text = "Enter a comment : ")
+        self.comment_label.grid(column=0, row=4, padx=10, pady=10, rowspan =1, columnspan=1, sticky="w")
+        
+        self.save_comment.set("")
+        self.comment_text = ctk.CTkEntry(self.d, textvariable = self.save_comment,
+                                           state = 'normal',width=300)
+        self.comment_text.grid(column=1, row=4, padx=10, pady=10, rowspan =1, columnspan=2,
+                            sticky="w")
+        
+        
         
         self.CANCEL_save_bouton = ctk.CTkButton(self.d, text = "Cancel",
                                             state = "normal", command = lambda :[self.d.destroy(),
                                                                                            self.save_options.configure(state = "normal")])
-        self.CANCEL_save_bouton.grid(column=0, row=4, padx=10, pady=10, rowspan =1, columnspan=1)
+        self.CANCEL_save_bouton.grid(column=0, row=5, padx=10, pady=10, rowspan =1, columnspan=1)
         
         self.confirm_bouton = ctk.CTkButton(self.d, text = "Confirm", state = "disabled",
                                         command = self.check_path)
-        self.confirm_bouton.grid(column=1, row=4, padx=10, pady=10, rowspan =1, columnspan=1)
+        self.confirm_bouton.grid(column=2, row=5, padx=10, pady=10, rowspan =1, columnspan=1)
+        self.d.protocol("WM_DELETE_WINDOW", lambda :[self.d.destroy(),
+                                                        self.save_options.configure(state = "normal")])
 
 
     def get_dir(self):
@@ -1252,14 +1266,26 @@ class OPApp(ctk.CTk):
         
         # creation of the log file
         with open(path+"/"+"log.txt", "w") as f:
+            print("version : alpha-2023_02_16", file = f)
             print("satellite name : " + self.sat_path.split('/')[-1][:-4], file = f)
+            print("original data file : " + self.IM["folder_name"], file = f)
             print("chosen domain : " + self.domain.get(), file = f)
-            print("filtering method : " + self.sort_choice.get(), file = f)
+            if self.sort_choice.get() =="keep all":
+                print("filtering method : " + "None", file = f)
+            else:
+                print("filtering method : " + "max-"+self.critere.get(), file = f)
             if self.chkSave_id.get():
-                print("\nnumber of kept Spectral Indices : " + str(len(self.IDXS["names"])), file = f)
+                print("number of kept Spectral Indices : " + str(len(self.IDXS["names"])), file = f)
                 print("chosen format for indices : " + self.id_SaveFormat, file = f)
+            else:
+                print("number of kept Spectral Indices : " + "0", file = f)
+                print("chosen format for indices : " + "None", file = f)
+                
             if self.chkSave_bands.get():
-                print("\nchosen format for bands : " + self.bands_SaveFormat, file = f)
+                print("chosen format for bands : " + self.bands_SaveFormat, file = f)
+            else:
+                print("chosen format for bands : " + "None", file = f)
+            print("comment : " + self.save_comment.get(), file = f)
         self.save_options.configure(state = "normal")
         self.WIP.configure(text = "Done")
         
@@ -1297,11 +1323,19 @@ class OPApp(ctk.CTk):
     # =========================================================================
     def get_combobox_value(self, sel):
         if sel=="idx":
-            self.shown_IDX = self.indice_list.get()
-            self.indices_scale.set(self.IDXS["names"].index(self.shown_IDX))
+            try:
+                self.shown_IDX = self.indice_list.get()
+                self.indices_scale.set(self.IDXS["names"].index(self.shown_IDX))
+            except ValueError:
+                showwarning('Unknown VI','Select a VI from the list')
+                self.indice_scale.set(self.IDXS["names"][0])
         elif sel=="bands":
-            self.shown_band = self.bands_list.get()
-            self.bands_scale.set(self.IM["bands_names"].index(self.shown_band))
+            try:
+                self.shown_band = self.bands_list.get()
+                self.bands_scale.set(self.IM["bands_names"].index(self.shown_band))
+            except ValueError:
+                showwarning('Unknown band','Select a band from the list')
+                self.bands_scale.set(self.IM["bands_names"][0])
         self.update()
             
         
@@ -1356,6 +1390,8 @@ class OPApp(ctk.CTk):
             VAL = int(val)
             self.a.clear()
             self.a.axis('off')
+            current_cmap = CM.get_cmap()
+            current_cmap.set_bad(color='white')
             self.a.set_title(self.IDXS["names"][VAL],color='white')
             self.color.clear()
             shw = self.a.imshow((self.IDXS["id"][VAL]))
@@ -1429,7 +1465,7 @@ class OPApp(ctk.CTk):
 #         fonctions de réduction du nombre d'indices affichés
 # =============================================================================
     def sort_idx(self):
-        # filtering "only background" images
+        # filtering "only background" and outliers
         temp = {"id":[], "names":[]}
         for i in range(len(self.IDXS["names"])):
             if len(np.unique(self.IDXS["id"][i]))!=1:
@@ -1442,16 +1478,33 @@ class OPApp(ctk.CTk):
             nb = int(self.nb_keep.get())
             if nb>len(self.IDXS["names"]):
                 nb = len(self.IDXS["names"])
+                
+            # entropy of the image (without nans and outliers)
             if self.critere.get() == "Entropy":
-                ENTR = [entropy(self.IDXS["id"][k]) for k in range(len(self.IDXS["names"]))]
+                ENTR = []
+                for i in range(len(self.IDXS["names"])):
+                    im = self.IDXS["id"][i]
+                    im = im[~np.isnan(im)]
+                    im[im>np.quantile(im,q = .95)]=np.nan
+                    im[im<np.quantile(im,q = .05)]=np.nan
+                    im = im[~np.isnan(im)]
+                    ENTR.append(np.var(im))
                 names = self.IDXS["names"]
                 ids = self.IDXS["id"] #no need to set it as a list, sort will do
                 ENTR, names, ids = zip(*sorted(zip(ENTR, names, ids), reverse=True))
                 self.IDXS = {"id": np.asarray(ids[:nb]),
                         "names": names[:nb]}
                 
+            # variance of the image (without nans and outliers)
             elif self.critere.get() == "Variance":
-                VAR = [np.var(self.IDXS["id"][k]) for k in range(len(self.IDXS["names"]))]
+                VAR = []
+                for i in range(len(self.IDXS["names"])):
+                    im = self.IDXS["id"][i]
+                    im = im[~np.isnan(im)]
+                    im[im>np.quantile(im,q = .95)]=np.nan
+                    im[im<np.quantile(im,q = .05)]=np.nan
+                    im = im[~np.isnan(im)]
+                    VAR.append(np.var(im))
                 names = self.IDXS["names"]
                 ids = self.IDXS["id"] #no need to set it as a list, sort will do
                 VAR, names, ids = zip(*sorted(zip(VAR, names, ids), reverse=True))
