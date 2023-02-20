@@ -1210,7 +1210,7 @@ class OPApp(ctk.CTk):
         today = datetime.datetime.now().strftime('%d_%m_%Y_%H:%M:%S')
         self.save_confirm.configure(state = "disabled")
         self.WIP.configure(text = "Saving...")
-        foldername='ONE-PIX_VI'+self.IM["folder_name"]
+        foldername='ONE-PIX_VI'+'_'+self.IM["folder_name"]
         path = self.save_path+"/"+foldername
         if not(os.path.exists(path)):
             os.mkdir(path)
@@ -1547,7 +1547,7 @@ class OPApp(ctk.CTk):
             res=load_hypercube(opt=os.path.dirname(self.data_path))
             self.IM = {"IM" : res["hyperspectral_image"].T,
                         "wl" : res["wavelengths"],
-                        "folder_name" : self.data_path.split('/')[-2][19:]}
+                        "folder_name" : self.data_path.split('/')[-2][:]}
         
         bands = []
         f = []
